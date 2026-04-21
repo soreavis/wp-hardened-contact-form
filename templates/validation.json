@@ -1,0 +1,20 @@
+{
+  "_comment": "Single source of truth for contact form validation rules. Consumed by both PHP (ContactHandler) and JS (initContactModal). Do not fork; keep aligned.",
+  "email": {
+    "maxLength": 120,
+    "pattern": "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+  },
+  "message": {
+    "minLength": 10,
+    "maxLength": 5000
+  },
+  "spam": {
+    "_minElapsedSeconds": 2,
+    "_minInteractions": 3,
+    "rateLimitPerMinute": 3,
+    "rateLimitWindowSeconds": 60,
+    "gibberishVowelMinRatio": 0.15,
+    "gibberishMaxConsonantRun": 6,
+    "gibberishSkipLengthBelow": 8
+  }
+}
