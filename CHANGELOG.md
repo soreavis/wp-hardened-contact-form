@@ -15,8 +15,8 @@ and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 - `templates/contact-modal.js` — client-side modal controller: entrance/exit transitions, ESC + backdrop close, focus trap, interaction counter, Turnstile Managed-mode render with `interaction-only` appearance, client-side validation mirroring the shared config.
 - `templates/setup-rest-route.php` — REST route registration + `window.{SLUG}` config injection + conditional Turnstile script enqueue.
 - `templates/.env.example` — documented env var shell for Resend + Turnstile keys.
-- `templates/contact.test.js` + `templates/contact-validation.test.php` — zero-framework test suites (~25 assertions).
+- `templates/contact.test.js` + `templates/contact-validation.test.php` — zero-framework test suites covering config shape, shared email regex (JS ↔ PHP parity), message length rules, gibberish-detector positive + negative cases, and honeypot field-name hygiene.
 - `SKILL.md` + `README.md` + `LICENSE` (MIT).
 
 ### Notes
-- Extracted from a production WordPress theme (Sage 11) where it has blocked >99% of form spam with zero false-positive reports over the first month. Patterns generalize to any PHP stack with a WordPress-like REST surface (Acorn/Laravel plugins, plain WP theme, Sage 10/11).
+- Extracted from a production WordPress theme (Sage 11) currently running this stack. The templates target Sage 10/11 + Acorn specifically — adapting to other stacks is out of scope for v0.1.0.

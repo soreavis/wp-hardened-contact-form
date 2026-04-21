@@ -6,7 +6,7 @@ allowed-tools: Read, Glob, Grep, Bash, Write, Edit, AskUserQuestion
 
 # /hardened-contact-form
 
-Install a hardened contact form into a **WordPress + Sage 10/11 + Acorn** (or plain WP theme with `composer.json` and Blade) project. All patterns come from a production site that has blocked >99% of form spam with zero false-positive reports over its first month in production.
+Install a hardened contact form into a **WordPress + Sage 10/11 + Acorn** (or plain WP theme with `composer.json` and Blade) project. Patterns extracted from a site currently running this stack in production.
 
 Trigger examples: *"add a contact form to this theme"*, *"harden the form against bots"*, *"set up Resend + Turnstile contact"*, *"install a 9-layer contact form."*
 
@@ -14,13 +14,13 @@ Trigger examples: *"add a contact form to this theme"*, *"harden the form agains
 
 ## Stack requirements
 
-- PHP 8.2+ (the endpoint uses typed properties + `fn()` arrow functions)
-- WordPress 6.0+ (uses `wp_remote_post`, `get_transient`, `sanitize_email`, `is_email`)
-- Sage 10 or 11 theme layout (Acorn-based), or any WP theme that can load Blade + register REST routes
-- Resend account (free tier — https://resend.com)
-- Optional: Cloudflare Turnstile widget (free — https://dash.cloudflare.com/?to=/:account/turnstile)
+- **PHP 7.4+** for this handler's own code (arrow functions, null coalescing, typed returns). Sage 11.2 independently requires PHP 8.3+ — if you're targeting current Sage 11, that's the effective floor. On Sage 10 / plain WP, 7.4+ suffices.
+- **WordPress 5.0+** — `register_rest_route` (4.4+), `sanitize_textarea_field` (4.7+), `wp_remote_post`, `get_transient`, `sanitize_email`, `is_email` all well-established. 5.0 is a conservative floor.
+- **Sage 10 or 11 theme layout** (Acorn-based), or any WP theme that can load Blade + register REST routes
+- **Resend account** — https://resend.com
+- **Optional: Cloudflare Turnstile widget** — https://dash.cloudflare.com/?to=/:account/turnstile
 
-If the project doesn't meet all three of the first bullets, stop and tell the user which assumption failed. Do not try to adapt the endpoint to a Laravel-only, plain-PHP, or Node project — those are outside this skill's scope.
+If the project doesn't meet the first three bullets, stop and tell the user which assumption failed. Do not try to adapt the endpoint to a Laravel-only, plain-PHP, or Node project — those are outside this skill's scope.
 
 ---
 
@@ -139,7 +139,7 @@ If the entry already has a DOMContentLoaded handler, add the `initContactModal()
 Append the contents of `templates/.env.example` to the theme's existing `.env.example` (create one if it doesn't exist). Then tell the user to copy to `.env` and fill in:
 
 - `RESEND_API_KEY` — required. Without it the endpoint returns `{ok:false, error:"not_configured"}`.
-- `RESEND_FROM` — for initial testing use `onboarding@resend.dev` (Resend's built-in sender, capped at 100 emails/day).
+- `RESEND_FROM` — for initial testing only, `onboarding@resend.dev` works without domain verification (Resend docs mark it explicitly as "testing only — use a verified domain for production"). For production, verify your own domain in the Resend dashboard and use a `noreply@yourdomain` address.
 - `CONTACT_TO` — inbox that receives messages.
 - `TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` — optional. Empty = Turnstile check skipped silently (dev mode).
 
@@ -162,15 +162,15 @@ Both should print `passed: N  failed: 0`. If either fails, the most common cause
 
 Landmines from the reference implementation. Teach future sessions to avoid them.
 
-1. **Custom `X-{Slug}-Nonce` header is load-bearing.** Do NOT "simplify" to `X-WP-Nonce`. WP core's `rest_cookie_check_errors` intercepts the standard header before our `permission_callback` runs — a valid nonce still gets rejected because WP also expects a cookie session. Custom header name sidesteps that path entirely.
+1. **Custom `X-{Slug}-Nonce` header is load-bearing.** Do NOT "simplify" to `X-WP-Nonce`. WP's built-in `rest_cookie_check_errors` runs on the `rest_authentication_errors` filter and validates `X-WP-Nonce` against a cookie-authenticated user session — if a logged-in editor submits the form, the standard header collides with the logged-in-session nonce check and rejects the request. Using a custom header name keeps the endpoint's permission flow in our own `permission_callback` for both anonymous and authenticated visitors.
 
-2. **Turnstile widget mode: Managed + `appearance: 'interaction-only'`.** Invisible mode (`size: 'invisible'` or dashboard "Invisible") returns HTTP 400 from `challenges.cloudflare.com`. Verified against 3+ combinations during the reference build — only Managed + interaction-only ships.
+2. **Turnstile widget mode: Managed + `appearance: 'interaction-only'`.** The Cloudflare dashboard widget must be created in "Managed" mode. Client-side, pass `appearance: 'interaction-only'` (documented value — Cloudflare supports `always`, `execute`, `interaction-only`) so the widget stays invisible unless a user actually needs to solve a challenge. During the reference build, dashboard-level "Invisible" widget mode failed with HTTP 400 errors from `challenges.cloudflare.com`; the client-side `size` parameter also does NOT accept `'invisible'` (documented values: `normal`, `flexible`, `compact`). Use Managed + interaction-only and don't set `size` at all.
 
-3. **Honeypot field name: `website`.** Not `_gotcha`, not `honeypot`, not `email_confirm`. Bots specifically scan for well-known honeypot names and skip them. A plausible-looking name (`website`, `url`, `company_url`) catches >50% of basic scrapers.
+3. **Honeypot field name: `website`.** Not `_gotcha`, not `honeypot`, not `email_confirm`. Common spam-bot libraries include heuristics that skip well-known honeypot names; a plausible-looking field name (`website`, `url`, `company_url`) avoids that detection.
 
 4. **Silent bot rejection = fake `{ok: true}` / HTTP 200.** Never return 400/403 on honeypot, timing, interaction-count, or gibberish failures — that signal tells the bot which layer tripped and lets it train. Only return non-200 for user-fixable errors (invalid email, message too long, rate limit, CAPTCHA failure).
 
-5. **`validation.json` is the single source of truth.** If you change a rule in PHP without updating JS (or vice versa), `contact.test.js` + `contact-validation.test.php` both fail — that's the point. Never hand-sync; always edit `validation.json`.
+5. **`validation.json` is the single source of truth.** Never hand-sync constants into the PHP handler or JS client — always edit `validation.json` and let both sides read from it at runtime. The bundled tests each load `validation.json` independently and assert that expected-behavior cases (typical email, over-length rejection, keyboard-mash gibberish flagging) still work in their respective runtimes; breaking the JSON breaks both test suites.
 
 6. **Privacy Pass 401s in dev tools.** Requests to `challenges.cloudflare.com/cdn-cgi/` returning 401 are **expected** — they're the Turnstile/RFC 9578 Privacy Pass handshake, not a bug. Only worry about 400s.
 
@@ -192,10 +192,10 @@ Before declaring the install done:
 - [ ] Submitting with 0 interactions returns 200 with `{ok:true}` but no email (interaction reject)
 - [ ] Submitting "asdfghjkl qwertyui zxcvbnm" returns 200 with `{ok:true}` but no email (gibberish reject)
 - [ ] `node theme/tests/contact.test.js` and `php theme/tests/contact-validation.test.php` both green
-- [ ] Lighthouse accessibility score on the modal stays at 100 (focus trap works, aria-live errors announced)
+- [ ] Manual a11y sanity: Tab into the modal cycles only through its fields, Shift-Tab cycles backward, ESC closes, field errors are announced by a screen reader (VoiceOver / NVDA)
 
 ---
 
 ## Reference implementation
 
-Extracted from a production WordPress theme where it has been running without incident since initial deploy. Patterns are battle-tested, not speculative. If you want to see one of these in the wild, ask the user — they can share a live URL.
+Extracted from a production WordPress theme currently running this stack. The gotchas in this file are lessons from that specific build — each one cost time to discover, and they're documented here so you don't have to rediscover them. If the user wants to see the pattern in the wild, they can share a live URL.

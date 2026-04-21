@@ -4,22 +4,22 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-0.1.0-blue)
-![PHP](https://img.shields.io/badge/PHP-8.2%2B-777bb4?logo=php&logoColor=white)
-![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-21759b?logo=wordpress&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white)
+![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b?logo=wordpress&logoColor=white)
 
 ---
 
 Most "contact form" tutorials stop at the `<form>` tag. Spam starts arriving five minutes after you deploy. You bolt on reCAPTCHA v3 out of guilt, forget to update it, and six months later you're forwarding spam from `qwertyuiop@mail.ru` to the recycle bin.
 
-This skill ships the opposite: a **9-layer defense stack** wired into a clean Sage theme — no visible CAPTCHA by default, one shared validation config that both JS and PHP read (drift impossible), and zero-framework tests that catch the first rule drift on CI. Extracted from a production WordPress site where it has blocked >99% of form spam with zero false-positive reports over its first month.
+This skill ships the opposite: a **9-layer defense stack** wired into a clean Sage theme — no visible CAPTCHA by default, one shared validation config that both JS and PHP read, and zero-framework tests that flag drift between them on CI. Extracted from a WordPress site currently running this stack in production.
 
 ---
 
 ## What ships
 
 - **9-layer server-side defense** — CSRF nonce (custom header avoids WP core collision), honeypot, timing check, interaction count, gibberish heuristic, rate limit, field validation, Cloudflare Turnstile (optional), Resend delivery. Silent rejection returns fake 200s so bots can't probe layers.
-- **Single source of truth for validation** — `resources/data/validation.json` is read by both the PHP endpoint and the JS client; client/server can never drift.
-- **Accessible glass-lightbox modal** — `role="dialog"`, focus trap, ESC + backdrop close, per-field `role="alert" aria-live="polite"` error slots, GDPR consent line. Passes Lighthouse a11y at 100.
+- **Single source of truth for validation** — `resources/data/validation.json` is read by both the PHP endpoint and the JS client at runtime. The bundled tests load the same JSON independently in each language and assert the shared email regex + length rules produce expected behavior; a bad edit to the JSON breaks both suites.
+- **Accessible glass-lightbox modal** — `role="dialog"` with `aria-modal="true"`, focus trap, ESC + backdrop close, per-field `role="alert" aria-live="polite"` error slots, GDPR consent line linking to a legal modal.
 - **Zero-framework tests** — `node theme/tests/contact.test.js` + `php theme/tests/contact-validation.test.php` catch rule drift. No PHPUnit, no Vitest, no install step beyond Node + PHP themselves.
 - **Dev-mode-friendly** — Turnstile + Resend both gracefully no-op when env vars are absent, so local dev doesn't require you to sign up for anything.
 
@@ -109,10 +109,10 @@ Edit once, both client and server pick up the change.
 
 ## Requirements
 
-- **PHP 8.2+** (typed properties, arrow functions, null coalescing)
-- **WordPress 6.0+** (REST API, transients, `is_email`, `sanitize_email`, `sanitize_textarea_field`)
+- **PHP 7.4+** for the handler itself (arrow functions, null coalescing, typed returns). If you're targeting current Sage 11.x, its own composer.json requires PHP 8.3+ — that's the effective floor, not a constraint from this handler.
+- **WordPress 5.0+** — uses `wp_remote_post`, `get_transient`, `is_email`, `sanitize_email`, `sanitize_textarea_field`, `register_rest_route` (minimum for the last one is WP 4.4; we round up to 5.0 because you should not be running anything older in 2026)
 - **Sage 10 or 11** layout (or any WP theme that can load Blade + register REST routes + read `env()`)
-- **Resend account** — https://resend.com (free tier: 100 emails/day)
+- **Resend account** — https://resend.com (free tier at time of writing: 100 emails/day, 3,000/month, 1 verified domain — confirm current limits at https://resend.com/pricing)
 - **Optional: Cloudflare Turnstile widget** — https://dash.cloudflare.com/?to=/:account/turnstile (free)
 
 ## Testing
@@ -121,10 +121,10 @@ Both test suites run without a framework:
 
 ```bash
 node theme/tests/contact.test.js
-# → ~12 assertions: config shape, email regex, message length, honeypot naming
+# Covers: config shape, email regex, message length, honeypot field-name hygiene
 
 php theme/tests/contact-validation.test.php
-# → ~15 assertions: config sanity, shared email regex, gibberish detector positive + negative cases
+# Covers: config sanity, shared email regex (JS ↔ PHP parity), gibberish detector — positive + negative cases
 ```
 
 If either fails after a rule change, it means the PHP handler and JS client have drifted from `validation.json`.
