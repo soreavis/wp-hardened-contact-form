@@ -1,4 +1,4 @@
-# hardened-contact-form
+# wp-hardened-contact-form
 
 **A Claude Code skill that installs a production-hardened contact form into a WordPress + Sage / Acorn theme.**
 
@@ -31,10 +31,10 @@ This skill is designed to be invoked by [Claude Code](https://claude.com/claude-
 # Clone into the project's .claude/skills/ folder (per-project install)
 cd your-wordpress-project
 mkdir -p .claude/skills
-git clone https://github.com/soreavis/hardened-contact-form.git .claude/skills/hardened-contact-form
+git clone https://github.com/soreavis/wp-hardened-contact-form.git .claude/skills/wp-hardened-contact-form
 
 # Or install globally for all projects:
-git clone https://github.com/soreavis/hardened-contact-form.git ~/.claude/skills/hardened-contact-form
+git clone https://github.com/soreavis/wp-hardened-contact-form.git ~/.claude/skills/wp-hardened-contact-form
 ```
 
 Restart Claude Code so it picks up the new skill. Then in your session:

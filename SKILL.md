@@ -1,10 +1,10 @@
 ---
-name: hardened-contact-form
+name: wp-hardened-contact-form
 description: Install a production-hardened contact form into a WordPress / Sage / Acorn theme. Ships a 9-layer defense stack (CSRF nonce, honeypot, timing, interaction count, gibberish heuristic, rate limit, field validation, Cloudflare Turnstile, Resend delivery) with a single shared validation.json consumed by both JS and PHP, an accessible glass-lightbox modal (role=dialog, focus trap, per-field aria-live errors), zero-framework tests. Use when the user asks to add a contact form, harden an existing form against spam/bots, add Resend + Turnstile to a WP/Sage site, or set up a form with "no visible CAPTCHA."
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, AskUserQuestion
 ---
 
-# /hardened-contact-form
+# /wp-hardened-contact-form
 
 Install a hardened contact form into a **WordPress + Sage 10/11 + Acorn** (or plain WP theme with `composer.json` and Blade) project. Patterns extracted from a site currently running this stack in production.
 
