@@ -99,7 +99,7 @@ t('rejects missing TLD', function () use ($re) {
 });
 t('rejects trailing space', function () use ($re) {
     // The pattern doesn't permit spaces; browser trimming handles most cases.
-    assertEqual(0, preg_match($re, 'user@domain.com '));
+    assertEqual(0, preg_match($re, 'user@example.com '));
 });
 
 // ── Gibberish detector ────────────────────────────────────────────────────
