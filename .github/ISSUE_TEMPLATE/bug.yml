@@ -1,0 +1,44 @@
+name: Bug report
+description: A template or layer doesn't behave as documented
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which part
+      options:
+        - "Front-end (contact-modal.blade.php / contact-modal.js)"
+        - "REST route (setup-rest-route.php)"
+        - "Handler / validation (ContactHandler.php)"
+        - "Shared config (validation.json)"
+        - "Turnstile / Resend integration"
+        - "Tests (contact-validation.test.php / contact.test.js)"
+        - "Install / setup docs"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: "WordPress + Sage/Acorn + PHP versions"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the payload shape if it's a spam/validation issue. Redact anything sensitive.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true

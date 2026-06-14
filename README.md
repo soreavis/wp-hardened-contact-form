@@ -2,6 +2,7 @@
 
 **A Claude Code skill that installs a production-hardened contact form into a WordPress + Sage / Acorn theme.**
 
+[![validate](https://github.com/soreavis/wp-hardened-contact-form/actions/workflows/validate.yml/badge.svg)](https://github.com/soreavis/wp-hardened-contact-form/actions/workflows/validate.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-0.1.0-blue)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white)
@@ -140,6 +141,10 @@ Full list in [`SKILL.md`](./SKILL.md). The three that bite hardest:
 ## Contributing
 
 Issues and PRs welcome. If you ship this on a real site and find a gap, open an issue with the layer that failed and the payload shape — that's the single most useful signal for improving the defaults.
+
+## Credits
+
+Created and maintained by **[Julian Soreavis](https://github.com/soreavis)** ([@soreavis](https://github.com/soreavis)).
 
 ## License
 

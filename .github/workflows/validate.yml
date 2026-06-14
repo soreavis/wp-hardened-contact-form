@@ -1,0 +1,25 @@
+name: validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP syntax check (templates)
+        run: |
+          fail=0
+          for f in templates/*.php; do
+            echo "== $f"
+            php -l "$f" || fail=1
+          done
+          if [ "$fail" = 0 ]; then echo "OK: all PHP templates lint clean"; else exit 1; fi
+
+      - name: Shared validation config is valid JSON
+        run: |
+          python3 -c "import json; json.load(open('templates/validation.json'))"
+          echo "OK: validation.json parses"
