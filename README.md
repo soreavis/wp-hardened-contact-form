@@ -147,6 +147,6 @@ Issues and PRs welcome. If you ship this on a real site and find a gap, open an 
 
 ## Acknowledgments
 
-Extracted from a live Sage 11 / Tailwind 4 / Vite 8 site where the 9-layer stack runs in production.
+Extracted from a production Sage 11 / Tailwind 4 / Vite 8 site where the 9-layer stack runs live.
 
 Built with [Claude Code](https://claude.com/claude-code).
