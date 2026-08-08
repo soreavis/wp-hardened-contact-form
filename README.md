@@ -1,3 +1,5 @@
+![Abstract dark banner: dense vertical streaks of light, amber on the left and cyan on the right, falling to a single bright horizontal line across the base.](docs/assets/hero.jpg)
+
 # WP Hardened Contact Form
 
 **A Claude Code skill that installs a production-hardened contact form into a WordPress + Sage / Acorn theme.**
@@ -87,6 +89,10 @@ document.addEventListener('DOMContentLoaded', () => { initContactModal(); });
 ```
 
 Then fill in `.env` and run the tests. Done.
+
+## Documentation
+
+Longer guides — running the skill, the request path layer by layer, tuning the config, what the tests do and do not cover, and the failure modes — are in [docs/](docs/).
 
 ## Configuration — `validation.json`
 
