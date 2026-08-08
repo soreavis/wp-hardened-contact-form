@@ -5,7 +5,7 @@ All notable changes to this skill are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2026-08-08
 
 ### Fixed
 - Turnstile no longer rejects every submission when only one of `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` is set. No widget renders without a site key, so no token could exist, and the secret-only check returned `403 captcha_failed` to every visitor. The endpoint now requires both keys before it enforces, and logs `turnstile half-configured` while the layer is off.

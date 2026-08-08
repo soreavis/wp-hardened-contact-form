@@ -6,7 +6,7 @@
 
 [![validate](https://github.com/soreavis/wp-hardened-contact-form/actions/workflows/validate.yml/badge.svg)](https://github.com/soreavis/wp-hardened-contact-form/actions/workflows/validate.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.1.1-blue)
 ![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white)
 ![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b?logo=wordpress&logoColor=white)
 
