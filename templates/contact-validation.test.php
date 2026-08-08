@@ -62,7 +62,14 @@ function isGibberish(string $text, array $cfg): bool
 }
 
 // ── Load shared validation config ─────────────────────────────────────────
-$cfgPath = __DIR__ . '/../resources/data/validation.json';
+// In this repo the config sits next to the templates; once the skill installs
+// them into a Sage theme it lands in resources/data/. Look in both so the test
+// runs from a clone as well as from an installed theme.
+$cfgPath = null;
+foreach ([__DIR__ . '/validation.json', __DIR__ . '/../resources/data/validation.json'] as $candidate) {
+    if (file_exists($candidate)) { $cfgPath = $candidate; break; }
+}
+assertTrue($cfgPath !== null, 'validation.json must be found');
 $cfg = json_decode(file_get_contents($cfgPath), true);
 assertTrue($cfg !== null, 'validation.json must parse');
 $spamCfg = $cfg['spam'];

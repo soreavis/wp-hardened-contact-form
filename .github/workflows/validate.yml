@@ -4,6 +4,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -23,3 +26,19 @@ jobs:
         run: |
           python3 -c "import json; json.load(open('templates/validation.json'))"
           echo "OK: validation.json parses"
+
+      # A machine path or a client name is scraped the moment it lands on a
+      # public repo; this repo already shipped a personal domain that had to be
+      # rewritten out of history. Cheaper to block on the PR.
+      # The README says these catch JS/PHP rule drift. They did not run in CI,
+      # and they could not run from a clone at all — both resolved the config
+      # from the INSTALLED theme layout (resources/data/) rather than the repo
+      # one, so the drift guarantee was documented but never enforced.
+      - name: JS validation rules match validation.json
+        run: node templates/contact.test.js
+
+      - name: PHP validation rules match validation.json
+        run: php templates/contact-validation.test.php
+
+      - name: No private data
+        run: python3 scripts/check-hygiene.py

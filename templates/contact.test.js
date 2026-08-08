@@ -17,12 +17,22 @@
  * Adjust the two resolve() paths below if your layout differs.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const cfg = JSON.parse(readFileSync(resolve(__dirname, '../resources/data/validation.json'), 'utf8'));
+// In this repo the config sits next to the templates; once the skill installs
+// them into a Sage theme it lands in resources/data/. Look in both so the test
+// runs from a clone as well as from an installed theme — it previously only
+// resolved the installed path, so it could not run here at all.
+const CANDIDATES = ['./validation.json', '../resources/data/validation.json'];
+const cfgPath = CANDIDATES.map((c) => resolve(__dirname, c)).find(existsSync);
+if (!cfgPath) {
+  console.error(`  validation.json not found in: ${CANDIDATES.join(', ')}`);
+  process.exit(1);
+}
+const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
 
 // ── Tiny test runner ──────────────────────────────────────────────────────
 let passed = 0, failed = 0;
@@ -72,7 +82,10 @@ t('rejects above max', () => assert(!validateMessage('a'.repeat(cfg.message.maxL
 console.log('\nhoneypot semantics:');
 t('honeypot field name is NOT _gotcha or honeypot (detectable conventions)', () => {
   // Read the Blade template to confirm we picked an innocuous name.
-  const bladePath = resolve(__dirname, '../resources/views/partials/contact-modal.blade.php');
+  // Same dual layout as the config: flat here, nested once installed.
+  const bladeCandidates = ['./contact-modal.blade.php', '../resources/views/partials/contact-modal.blade.php'];
+  const bladePath = bladeCandidates.map((c) => resolve(__dirname, c)).find(existsSync);
+  if (!bladePath) throw new Error(`contact-modal.blade.php not found in: ${bladeCandidates.join(', ')}`);
   const blade = readFileSync(bladePath, 'utf8');
   assert(/name="website"/.test(blade), 'honeypot must be named "website"');
   assert(!/name="_gotcha"/.test(blade), '_gotcha is a well-known bot-scannable name');

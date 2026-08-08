@@ -1,4 +1,4 @@
-# wp-hardened-contact-form
+# WP Hardened Contact Form
 
 **A Claude Code skill that installs a production-hardened contact form into a WordPress + Sage / Acorn theme.**
 
@@ -21,7 +21,7 @@ This skill ships the opposite: a **9-layer defense stack** wired into a clean Sa
 - **9-layer server-side defense** — CSRF nonce (custom header avoids WP core collision), honeypot, timing check, interaction count, gibberish heuristic, rate limit, field validation, Cloudflare Turnstile (optional), Resend delivery. Silent rejection returns fake 200s so bots can't probe layers.
 - **Single source of truth for validation** — `resources/data/validation.json` is read by both the PHP endpoint and the JS client at runtime. The bundled tests load the same JSON independently in each language and assert the shared email regex + length rules produce expected behavior; a bad edit to the JSON breaks both suites.
 - **Accessible glass-lightbox modal** — `role="dialog"` with `aria-modal="true"`, focus trap, ESC + backdrop close, per-field `role="alert" aria-live="polite"` error slots, GDPR consent line linking to a legal modal.
-- **Zero-framework tests** — `node theme/tests/contact.test.js` + `php theme/tests/contact-validation.test.php` catch rule drift. No PHPUnit, no Vitest, no install step beyond Node + PHP themselves.
+- **Zero-framework tests** — `node templates/contact.test.js` + `php templates/contact-validation.test.php` catch rule drift. No PHPUnit, no Vitest, no install step beyond Node + PHP themselves.
 - **Dev-mode-friendly** — Turnstile + Resend both gracefully no-op when env vars are absent, so local dev doesn't require you to sign up for anything.
 
 ## Install as a Claude Code skill
@@ -118,17 +118,33 @@ Edit once, both client and server pick up the change.
 
 ## Testing
 
-Both test suites run without a framework:
+Both suites run without a framework, and CI runs both on every push and pull
+request — so drift between the PHP handler and the JS client fails the build
+rather than waiting to be noticed.
+
+From a clone of this repo:
 
 ```bash
-node theme/tests/contact.test.js
+node templates/contact.test.js
 # Covers: config shape, email regex, message length, honeypot field-name hygiene
 
-php theme/tests/contact-validation.test.php
+php templates/contact-validation.test.php
 # Covers: config sanity, shared email regex (JS ↔ PHP parity), gibberish detector — positive + negative cases
 ```
 
-If either fails after a rule change, it means the PHP handler and JS client have drifted from `validation.json`.
+From a theme you have already installed into, the same files live under
+`tests/`:
+
+```bash
+node tests/contact.test.js
+php tests/contact-validation.test.php
+```
+
+Both resolve `validation.json` from whichever layout they find, so the same file
+works in either place.
+
+If either fails after a rule change, the PHP handler and the JS client have
+drifted from `validation.json`.
 
 ## Gotchas worth knowing
 
