@@ -23,7 +23,10 @@
 const CONTACT_ENTRANCE_MS = 600;
 const CONTACT_EXIT_MS = 400;
 
-const CONFIG = window.{SLUG} || {};
+// Bracket access, not `window.{SLUG}`: this file then parses before the
+// placeholders are substituted, so `node --check` and the test suite can
+// both load it as shipped.
+const CONFIG = window['{SLUG}'] || {};
 const CONTACT_ENDPOINT = CONFIG.contactUrl || '/wp-json/{slug}/v1/contact';
 
 let VALIDATION = null;
@@ -38,6 +41,32 @@ const loadValidation = async () => {
     VALIDATION = { email: { maxLength: 120, pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$' }, message: { minLength: 10, maxLength: 5000 } };
   }
   return VALIDATION;
+};
+
+/**
+ * Field rules, shared with the test suite. Pure — no DOM, no network — so the
+ * bundled tests exercise this exact function rather than a copy of it.
+ * Returns a map of field name to message; empty means valid.
+ */
+export const validateFields = (data, rules = {}) => {
+  const errors = {};
+
+  const email = (data.email || '').trim();
+  const emailRe = new RegExp(rules.email?.pattern || '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$');
+  if (!email || !emailRe.test(email) || email.length > (rules.email?.maxLength || 120)) {
+    errors.email = 'Enter a valid email.';
+  }
+
+  const msg = (data.message || '').trim();
+  const minL = rules.message?.minLength || 10;
+  const maxL = rules.message?.maxLength || 5000;
+  if (msg.length < minL) {
+    errors.message = `Message too short (min ${minL} characters).`;
+  } else if (msg.length > maxL) {
+    errors.message = `Message too long (max ${maxL} characters).`;
+  }
+
+  return errors;
 };
 
 const contactErrorMessage = (code) => ({
@@ -148,25 +177,9 @@ export const initContactModal = () => {
 
   const validateClient = (data) => {
     clearFieldErrors();
-    const v = VALIDATION || {};
-    let ok = true;
-    const email = (data.email || '').trim();
-    const emailRe = new RegExp(v.email?.pattern || '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$');
-    if (!email || !emailRe.test(email) || email.length > (v.email?.maxLength || 120)) {
-      showFieldError('email', 'Enter a valid email.');
-      ok = false;
-    }
-    const msg = (data.message || '').trim();
-    const minL = v.message?.minLength || 10;
-    const maxL = v.message?.maxLength || 5000;
-    if (msg.length < minL) {
-      showFieldError('message', `Message too short (min ${minL} characters).`);
-      ok = false;
-    } else if (msg.length > maxL) {
-      showFieldError('message', `Message too long (max ${maxL} characters).`);
-      ok = false;
-    }
-    return ok;
+    const errors = validateFields(data, VALIDATION || {});
+    Object.entries(errors).forEach(([field, msg]) => showFieldError(field, msg));
+    return Object.keys(errors).length === 0;
   };
 
   const resetForm = () => {

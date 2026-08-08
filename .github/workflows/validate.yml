@@ -22,6 +22,19 @@ jobs:
           done
           if [ "$fail" = 0 ]; then echo "OK: all PHP templates lint clean"; else exit 1; fi
 
+      # The client used to hold `window.{SLUG}` at module scope, which is not
+      # parseable JavaScript until the placeholders are substituted — so this
+      # could not run at all. Bracket access fixed that, and the same change
+      # let the suite import the client instead of transcribing its rules.
+      - name: JS syntax check (templates)
+        run: |
+          fail=0
+          for f in templates/*.js; do
+            echo "== $f"
+            node --check "$f" || fail=1
+          done
+          if [ "$fail" = 0 ]; then echo "OK: all JS templates parse"; else exit 1; fi
+
       - name: Shared validation config is valid JSON
         run: |
           python3 -c "import json; json.load(open('templates/validation.json'))"

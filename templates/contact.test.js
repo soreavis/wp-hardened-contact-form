@@ -19,7 +19,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // In this repo the config sits next to the templates; once the skill installs
@@ -42,14 +42,22 @@ const t = (name, fn) => {
 };
 const assert = (cond, msg = 'expected true') => { if (!cond) throw new Error(msg); };
 
-// ── Validation (mirrors validateClient in contact-modal.js) ───────────────
-const emailRe = new RegExp(cfg.email.pattern);
+// ── Validation, driven through the client's own exported rules ────────────
+// Same dual layout as the config. contact-modal.js reads `window` at module
+// scope, so the shim has to exist before the import is evaluated — which is
+// why this is a dynamic import rather than a static one at the top.
+const CLIENT_CANDIDATES = ['./contact-modal.js', '../resources/js/contact-modal.js'];
+const clientPath = CLIENT_CANDIDATES.map((c) => resolve(__dirname, c)).find(existsSync);
+if (!clientPath) {
+  console.error(`  contact-modal.js not found in: ${CLIENT_CANDIDATES.join(', ')}`);
+  process.exit(1);
+}
+globalThis.window = {};
+const { validateFields } = await import(pathToFileURL(clientPath).href);
 
-const validateEmail = (email) =>
-  email && emailRe.test(email) && email.length <= cfg.email.maxLength;
-
-const validateMessage = (msg) =>
-  msg.length >= cfg.message.minLength && msg.length <= cfg.message.maxLength;
+const FILLER = 'x'.repeat(cfg.message.minLength);
+const validateEmail = (email) => !('email' in validateFields({ email, message: FILLER }, cfg));
+const validateMessage = (msg) => !('message' in validateFields({ email: 'user@example.com', message: msg }, cfg));
 
 // ── Tests ─────────────────────────────────────────────────────────────────
 console.log('\nconfig loaded:');

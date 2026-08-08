@@ -5,6 +5,15 @@ All notable changes to this skill are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-08-08
+
+### Changed
+- `contact-modal.js` reads its config with `window['{SLUG}']` rather than `window.{SLUG}`. The file now parses before the placeholders are substituted, which means `node --check` can lint it and the test suite can import it as committed. Runtime behaviour is identical once substituted.
+- The client's field rules moved into an exported `validateFields(data, rules)`, pure and DOM-free, with `validateClient` calling it. The JS suite imports that function instead of transcribing its rules — verified by mutation: neutering the real one now fails seven assertions that previously stayed green.
+
+### Added
+- CI runs `node --check` over `templates/*.js`, which was impossible while the client could not parse.
+
 ## [0.1.2] - 2026-08-08
 
 ### Fixed
