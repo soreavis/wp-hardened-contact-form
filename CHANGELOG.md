@@ -5,6 +5,16 @@ All notable changes to this skill are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Turnstile no longer rejects every submission when only one of `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` is set. No widget renders without a site key, so no token could exist, and the secret-only check returned `403 captcha_failed` to every visitor. The endpoint now requires both keys before it enforces, and logs `turnstile half-configured` while the layer is off.
+- The `_ts` timing field is no longer re-stamped from the browser clock when the modal opens. The server compares it against its own `time()`, so a visitor whose machine ran ahead of the host produced a negative elapsed time and was silently dropped by the timing layer for the length of the offset. The client now restores the server-rendered value.
+
+### Added
+- `docs/` — getting started, how it works, configuration, testing, troubleshooting.
+- Hero image in the README.
+
 ## [0.1.0] - 2026-04-21
 
 ### Added

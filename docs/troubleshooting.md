@@ -28,9 +28,11 @@ You want `event=honeypot_hit`, `timing_too_fast`, `low_interactions` or `gibberi
 
 ## Real messages vanish, and the log says `timing_too_fast`
 
-Check the clock on the machine that submitted. The `_ts` field is stamped from the browser's clock when the modal opens, and the server compares it against its own with `time() - $ts`. A visitor whose clock runs ahead of the server produces a negative elapsed time, which reads as faster than `_minElapsedSeconds` and gets silently dropped. Ahead by a minute means everything sent within a minute of opening the form disappears.
+`_ts` is rendered by the server and compared against the server's own clock, so a visitor's machine being fast or slow cannot cause this. Two things still can.
 
-Server-side clock drift does the same thing to everyone at once. If the log fills with `timing_too_fast` from unrelated IPs, check NTP on the host before touching the config.
+A genuine sub-`_minElapsedSeconds` submission — someone with the form prefilled by a password manager who submits immediately. Two seconds is a low bar, but if your form is short, raising it is the wrong direction.
+
+Or the host's clock stepped backwards, usually an NTP correction, which makes `time()` earlier than a timestamp it issued moments ago. If the log fills with `timing_too_fast` from unrelated IPs at once, check the clock on the host before touching the config.
 
 ## The client accepts an address the server rejects
 
@@ -44,9 +46,9 @@ The server measures with `strlen()`, which counts bytes; the browser measures wi
 
 ## Every submission returns `403 captcha_failed`
 
-Almost always one Turnstile key without the other. With `TURNSTILE_SECRET_KEY` set and `TURNSTILE_SITE_KEY` empty, no widget renders, no token is produced, and the server rejects an empty token every time. Set both or neither.
+Both keys are set and something is wrong with the token itself. The likeliest cause is a submission that beat the widget to one, since the client does not wait by default — see [Configuration](configuration.md#turnstile). After that, check the widget is in Managed mode and that the secret belongs to the same widget as the site key.
 
-If both are set, the other possibility is a submission that beat the widget to a token — the client does not wait for one by default. See [Configuration](configuration.md#turnstile).
+One key without the other does not produce this. The server treats a half-configured pair as unconfigured and logs `turnstile half-configured` instead, so if the log says that, the layer is off and this is not your problem.
 
 ## Turnstile returns HTTP 400
 

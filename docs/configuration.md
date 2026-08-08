@@ -27,7 +27,7 @@ Appended to the theme's `.env.example` at install. All six are read through Acor
 | `RESEND_API_KEY` | `500 not_configured`, logged. The only variable with no fallback. |
 | `RESEND_FROM` | Falls back to `onboarding@resend.dev`. |
 | `CONTACT_TO` | Falls back to the WordPress `admin_email` option. |
-| `TURNSTILE_SITE_KEY` | No script enqueued, no widget rendered. |
+| `TURNSTILE_SITE_KEY` | No script enqueued, no widget rendered, and server-side verification is skipped. |
 | `TURNSTILE_SECRET_KEY` | Server-side verification skipped, and returns as if it passed. |
 
 `onboarding@resend.dev` is Resend's testing sender. Their docs mark it testing-only; production needs an address on a domain you have verified there, with the DKIM and SPF records in place. Sending from an unverified domain is rejected at Resend, which arrives here as `502 upstream` with the status in the log.
@@ -36,7 +36,7 @@ Appended to the theme's `.env.example` at install. All six are read through Acor
 
 Off by default. Both keys set means the widget renders and the server verifies. Neither set means the whole layer is skipped, which is what makes local development work without signing up for anything.
 
-Setting exactly one is the trap, and the two halves fail differently. Site key only: the widget renders, the server verifies nothing, and everything submits. **Secret only: no widget renders, so no token is ever produced, and every single submission comes back `403 captcha_failed`.** If the form breaks the moment you add Turnstile, check that both keys are present.
+Setting exactly one disables the layer rather than half-enabling it. The server requires both keys before it enforces anything, because a secret without a site key means no widget renders, no token is ever produced, and enforcing would reject every submission — one missing variable taking the whole form down. When it detects that state it logs `turnstile half-configured` on each submission and lets the request through to the other eight layers. If you set up Turnstile and the log says that, you have a typo in one of the two names.
 
 Two settings are not optional. The dashboard widget must be created in **Managed** mode, and the client passes `appearance: 'interaction-only'` so it stays invisible unless a challenge is genuinely needed. Invisible dashboard mode returned HTTP 400 from `challenges.cloudflare.com` during the reference build, and the client-side `size` parameter does not accept `'invisible'` either — it takes `normal`, `flexible` or `compact`. Leave `size` unset.
 

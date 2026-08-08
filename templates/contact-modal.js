@@ -67,6 +67,11 @@ export const initContactModal = () => {
   const emailInput = form.querySelector('input[name="email"]');
   const messageInput = form.querySelector('textarea[name="message"]');
   const interactionsInput = form.querySelector('input[name="_interactions"]');
+  const tsInput = form.querySelector('input[name="_ts"]');
+  // Server-rendered, and it stays that way: the server compares this against
+  // its own time(), so re-stamping from the browser clock silently drops
+  // every visitor whose machine runs ahead of the host.
+  const serverTs = tsInput ? tsInput.value : '';
   const turnstileSlot = form.querySelector('[data-contact-turnstile]');
   const turnstileTokenInput = form.querySelector('input[name="cf_turnstile_token"]');
 
@@ -179,8 +184,7 @@ export const initContactModal = () => {
     if (window.turnstile && turnstileWidgetId !== null) {
       try { window.turnstile.reset(turnstileWidgetId); } catch { /* noop */ }
     }
-    const ts = form.querySelector('input[name="_ts"]');
-    if (ts) ts.value = String(Math.floor(Date.now() / 1000));
+    if (tsInput) tsInput.value = serverTs;
   };
 
   const focusableSelector = 'a[href],button:not([disabled]),input:not([disabled]):not([tabindex="-1"]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';

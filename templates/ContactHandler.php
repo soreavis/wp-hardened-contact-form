@@ -75,8 +75,15 @@ class ContactHandler
     private static function verifyTurnstile(string $token, string $ip): bool
     {
         $secret = function_exists('env') ? (string) env('TURNSTILE_SECRET_KEY') : '';
-        if ($secret === '') {
-            return true; // not configured — skip silently (dev)
+        $siteKey = function_exists('env') ? (string) env('TURNSTILE_SITE_KEY') : '';
+        if ($secret === '' || $siteKey === '') {
+            // Half-configured is not configured. Without a site key no widget
+            // renders, so no token can ever exist and enforcing here would
+            // reject every submission — a total outage from one missing var.
+            if ($secret !== '' || $siteKey !== '') {
+                error_log('[{slug} contact] turnstile half-configured — set both TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY, or neither; skipping check');
+            }
+            return true;
         }
         if ($token === '') {
             return false;

@@ -4,7 +4,7 @@
 
 **On page render**, `setup.php` prints a small config blob into `<head>` at priority 5: a fresh nonce for the `{slug}_contact` action, the REST URL, and the Turnstile site key if one is set. It is namespaced on `window.{SLUG}` so it does not collide with other globals. The Turnstile script is enqueued separately, and only when a site key exists.
 
-**On modal open**, the client resets the form, stamps the `_ts` hidden field with the browser's clock, zeroes the interaction counter, renders the Turnstile widget if configured, and fetches `validation.json`.
+**On modal open**, the client resets the form, restores `_ts` to the value the server rendered into the markup, zeroes the interaction counter, renders the Turnstile widget if configured, and fetches `validation.json`. That stamp is never taken from the browser's clock, because the server compares it against its own — a visitor running a few seconds fast would otherwise look like a sub-second submission and be dropped.
 
 **While the visitor types**, `mousemove`, `keydown`, `touchstart` and `pointermove` on the form each increment `_interactions`.
 
@@ -25,7 +25,7 @@ The header comment in `ContactHandler.php` numbers them 1–9 as a stack. The ha
 | Field validation | email fails `is_email` or the length cap; message under min or over max | `422` with `invalid_email`, `message_too_short`, `message_too_long` |
 | Gibberish | vowel ratio below the floor, or a consonant run at the cap | `200 {ok:true}` |
 | Rate limit | this IP already has `rateLimitPerMinute` hits in the window | `429 rate_limited` |
-| Turnstile | secret is configured and the token is missing or rejected | `403 captcha_failed` |
+| Turnstile | both keys are configured and the token is missing or rejected | `403 captcha_failed` |
 | Resend | key missing / transport error / non-2xx from Resend | `500 not_configured`, `502 network`, `502 upstream` |
 
 Everything else gets `200 {ok:true}` and an email.
