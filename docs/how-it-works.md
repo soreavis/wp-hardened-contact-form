@@ -20,7 +20,7 @@ The header comment in `ContactHandler.php` numbers them 1–9 as a stack. The ha
 |---|---|---|
 | Nonce | header missing, wrong, or expired | handler never runs; WordPress returns a REST error |
 | Honeypot | the hidden `website` field is non-empty | `200 {ok:true}` |
-| Timing | `_ts` is present and less than `_minElapsedSeconds` has passed | `200 {ok:true}` |
+| Timing | `_ts` is missing, or less than `_minElapsedSeconds` has passed since it was issued | `200 {ok:true}` |
 | Interactions | `_interactions` is below `_minInteractions` | `200 {ok:true}` |
 | Field validation | email fails `is_email` or the length cap; message under min or over max | `422` with `invalid_email`, `message_too_short`, `message_too_long` |
 | Gibberish | vowel ratio below the floor, or a consonant run at the cap | `200 {ok:true}` |
@@ -36,7 +36,9 @@ The four bot-shaped checks — honeypot, timing, interaction count, gibberish �
 
 A `403` tells a bot it found a wall, and a bot that knows which wall it hit can go around it. So the loud codes are reserved for things a human can act on: a malformed address, a message that is too long, too many attempts, a failed CAPTCHA. If you add a layer, keep it on the quiet side of that line.
 
-Two consequences worth knowing. The rate limiter only counts requests that reach it, so anything caught by an earlier layer never consumes budget — a bot tripping the honeypot can post as often as it likes and each attempt costs a `200`. If volume is the problem rather than delivery, that belongs at the WAF, not here. And the timing check is skipped entirely when `_ts` is absent, since `$ts > 0` guards it; a client that omits the field is not evaluated.
+Two consequences worth knowing. The rate limiter only counts requests that reach it, so anything caught by an earlier layer never consumes budget — a bot tripping the honeypot can post as often as it likes and each attempt costs a `200`. If volume is the problem rather than delivery, that belongs at the WAF, not here.
+
+And a payload with no `_ts` is rejected rather than waved through. The form always renders the field, so its absence means the request was not built by the form — which is the shape a script posting raw JSON has. It logs as `missing_ts`, distinct from `timing_too_fast`, so the two are separable in the log. Anything of your own that posts to this endpoint has to send the field.
 
 ## The honeypot name
 
@@ -54,6 +56,7 @@ Every rejection that reaches the handler writes one line to the PHP error log, t
 
 ```
 [mybrand contact] event=honeypot_hit ip=203.0.113.7
+[mybrand contact] event=missing_ts ip=203.0.113.7
 [mybrand contact] event=timing_too_fast ip=203.0.113.7 elapsed=0
 [mybrand contact] event=low_interactions ip=203.0.113.7 count=0
 [mybrand contact] event=gibberish ip=203.0.113.7 msg_len=26

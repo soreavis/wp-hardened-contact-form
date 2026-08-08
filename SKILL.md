@@ -121,6 +121,7 @@ Multiple triggers can exist on the same page; all open the same modal.
 In the theme's main JS entry (usually `theme/resources/js/app.js`):
 
 ```js
+// Wire the modal up once the DOM is ready
 import { initContactModal } from './contact-modal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -150,6 +151,7 @@ Confirm `.env` is gitignored. Almost every Sage `.gitignore` already excludes `.
 ## Phase 7 — Run tests
 
 ```bash
+# Both suites — each should print `passed: N  failed: 0`
 node theme/tests/contact.test.js
 php theme/tests/contact-validation.test.php
 ```

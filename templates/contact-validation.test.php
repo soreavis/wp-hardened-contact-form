@@ -138,6 +138,71 @@ t('Slavic / German names do not false-positive', function () use ($spamCfg) {
     assertTrue(!isGibberish('Greetings from Bratislava, my name is Petra Schwarzkopf.', $spamCfg));
 });
 
+// ── Turnstile configuration gate ──────────────────────────────────────────
+// Regression cover for 0.1.1: a secret without a site key meant no widget
+// rendered, so no token could exist, and every submission was answered with
+// 403. The gate must treat a half-configured pair as off, and say so in the
+// log — that line is the operator's only signal the layer is not running.
+//
+// Reflection rather than a WordPress bootstrap: verifyTurnstile returns
+// before any wp_remote_post call in all four cases below, so nothing here
+// touches the network. env() is stubbed only if the runtime has none, which
+// is always true when this file is run directly as a CLI script.
+$handlerPath = null;
+foreach ([__DIR__ . '/ContactHandler.php', __DIR__ . '/../app/Http/ContactHandler.php'] as $candidate) {
+    if (file_exists($candidate)) { $handlerPath = $candidate; break; }
+}
+
+echo "\nturnstile configuration gate:\n";
+if ($handlerPath === null) {
+    echo "  ! skipped — ContactHandler.php not found next to this file or in ../app/Http/\n";
+} else {
+    require_once $handlerPath;
+    if (!function_exists('env')) {
+        function env(string $key)
+        {
+            return $GLOBALS['TEST_ENV'][$key] ?? '';
+        }
+    }
+
+    $logFile = tempnam(sys_get_temp_dir(), 'contact-test-');
+    ini_set('error_log', $logFile);
+
+    $verify = new ReflectionMethod('App\Http\ContactHandler', 'verifyTurnstile');
+    if (PHP_VERSION_ID < 80100) {
+        $verify->setAccessible(true); // no-op since 8.1, deprecated in 8.5
+    }
+
+    // Returns [allowed, log output] for one key combination.
+    $gate = function (string $secret, string $siteKey, string $token) use ($verify, $logFile) {
+        $GLOBALS['TEST_ENV'] = ['TURNSTILE_SECRET_KEY' => $secret, 'TURNSTILE_SITE_KEY' => $siteKey];
+        file_put_contents($logFile, '');
+        return [$verify->invoke(null, $token, '203.0.113.7'), file_get_contents($logFile)];
+    };
+
+    t('neither key — skips silently (dev)', function () use ($gate) {
+        [$allowed, $log] = $gate('', '', '');
+        assertEqual(true, $allowed, 'must skip when Turnstile is not configured');
+        assertTrue(strpos($log, 'half-configured') === false, 'must not warn when neither key is set');
+    });
+    t('secret without site key — skips and warns', function () use ($gate) {
+        [$allowed, $log] = $gate('secret', '', '');
+        assertEqual(true, $allowed, 'must not reject when no widget can render');
+        assertTrue(strpos($log, 'half-configured') !== false, 'must log the misconfiguration');
+    });
+    t('site key without secret — skips and warns', function () use ($gate) {
+        [$allowed, $log] = $gate('', 'sitekey', '');
+        assertEqual(true, $allowed, 'must not enforce without a secret to verify against');
+        assertTrue(strpos($log, 'half-configured') !== false, 'must log the misconfiguration');
+    });
+    t('both keys, empty token — rejects', function () use ($gate) {
+        [$allowed] = $gate('secret', 'sitekey', '');
+        assertEqual(false, $allowed, 'must reject an empty token once fully configured');
+    });
+
+    unlink($logFile);
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────
 echo "\n—\n";
 echo "passed: $passed    failed: $failed\n";

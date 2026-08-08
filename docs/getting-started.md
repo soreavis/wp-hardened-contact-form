@@ -23,6 +23,7 @@ Then it copies seven files into the theme, appends the REST route to `setup.php`
 Copy the files from [`templates/`](../templates) to the destinations in the main README and replace four tokens: `{slug}`, `{SLUG}`, `{Slug}`, `{domain}`. Then confirm none survived:
 
 ```bash
+# Confirm no placeholder token survived the copy
 grep -rn '{slug}\|{SLUG}\|{Slug}\|{domain}' path/to/theme/
 ```
 
@@ -43,6 +44,7 @@ The skill does not do these, and the form is not usable until they are done.
 **Call the initialiser** from the theme's JS entry, after DOM ready:
 
 ```js
+// Wire the modal up once the DOM is ready
 import { initContactModal } from './contact-modal.js';
 document.addEventListener('DOMContentLoaded', () => { initContactModal(); });
 ```
@@ -60,6 +62,7 @@ Restart the site and load `/wp-json/{slug}/v1/`. You should see the `/contact` r
 Then run both suites from the theme:
 
 ```bash
+# Both suites, run from the theme
 node tests/contact.test.js
 php tests/contact-validation.test.php
 ```

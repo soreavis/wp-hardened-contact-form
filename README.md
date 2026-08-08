@@ -84,6 +84,7 @@ Then in your Blade layout, include the partial and add a trigger:
 In your JS entry (usually `resources/js/app.js`):
 
 ```js
+// Wire the modal up once the DOM is ready
 import { initContactModal } from './contact-modal.js';
 document.addEventListener('DOMContentLoaded', () => { initContactModal(); });
 ```
@@ -131,17 +132,18 @@ rather than waiting to be noticed.
 From a clone of this repo:
 
 ```bash
+# Config shape, email regex, message length, honeypot field-name hygiene
 node templates/contact.test.js
-# Covers: config shape, email regex, message length, honeypot field-name hygiene
 
+# Config sanity, shared email regex (JS to PHP parity), gibberish detector — positive and negative cases, Turnstile configuration gate
 php templates/contact-validation.test.php
-# Covers: config sanity, shared email regex (JS ↔ PHP parity), gibberish detector — positive + negative cases
 ```
 
 From a theme you have already installed into, the same files live under
 `tests/`:
 
 ```bash
+# Same two suites, from an installed theme
 node tests/contact.test.js
 php tests/contact-validation.test.php
 ```

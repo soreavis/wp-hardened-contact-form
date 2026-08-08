@@ -21,6 +21,7 @@ Or it expired. WordPress nonces are time-limited, so a tab left open long enough
 Working as designed, and the browser cannot tell you which layer caught it — the honeypot, timing, interaction-count and gibberish checks all answer exactly like a success. The PHP error log is the only place the difference is recorded:
 
 ```bash
+# The PHP error log is the only place the rejecting layer is recorded
 grep '\[{slug} contact\]' path/to/debug.log
 ```
 
@@ -31,6 +32,8 @@ You want `event=honeypot_hit`, `timing_too_fast`, `low_interactions` or `gibberi
 `_ts` is rendered by the server and compared against the server's own clock, so a visitor's machine being fast or slow cannot cause this. Two things still can.
 
 A genuine sub-`_minElapsedSeconds` submission — someone with the form prefilled by a password manager who submits immediately. Two seconds is a low bar, but if your form is short, raising it is the wrong direction.
+
+A separate event, `missing_ts`, means the payload carried no `_ts` at all. From a browser that should be impossible, since the field is in the markup. From your own integration posting JSON to the endpoint, it means you have to send it — the server stopped treating an absent timestamp as a reason to skip the check.
 
 Or the host's clock stepped backwards, usually an NTP correction, which makes `time()` earlier than a timestamp it issued moments ago. If the log fills with `timing_too_fast` from unrelated IPs at once, check the clock on the host before touching the config.
 

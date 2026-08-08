@@ -119,7 +119,13 @@ class ContactHandler
         // 3. Timing — submit within N seconds of page-render? almost always a script.
         $ts = (int) ($data['_ts'] ?? 0);
         $minElapsed = (int) ($cfg['spam']['_minElapsedSeconds'] ?? 2);
-        if ($ts > 0 && (time() - $ts) < $minElapsed) {
+        // The form always renders `_ts`, so its absence means the payload was
+        // not built by the form. Treat that as a failure rather than a skip.
+        if ($ts <= 0) {
+            self::audit('missing_ts', $ip);
+            return new WP_REST_Response(['ok' => true], 200);
+        }
+        if ((time() - $ts) < $minElapsed) {
             self::audit('timing_too_fast', $ip, ['elapsed' => time() - $ts]);
             return new WP_REST_Response(['ok' => true], 200);
         }
