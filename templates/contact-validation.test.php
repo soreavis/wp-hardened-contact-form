@@ -44,21 +44,44 @@ function assertEqual($expected, $actual, string $msg = ''): void
     }
 }
 
-// Inline copy of the gibberish detector (mirrors ContactHandler::isGibberish)
-// so tests can run without bootstrapping WordPress.
+// ── Load the handler ──────────────────────────────────────────────────────
+// The gibberish detector and the Turnstile gate are both private statics on
+// ContactHandler. Reflection reaches the real ones without a WordPress
+// bootstrap — every method used below returns before it touches WP or the
+// network — so the suite tests the shipped code rather than a copy of it.
+// Same dual layout as the config: flat in this repo, nested once installed.
+$handlerPath = null;
+foreach ([__DIR__ . '/ContactHandler.php', __DIR__ . '/../app/Http/ContactHandler.php'] as $candidate) {
+    if (file_exists($candidate)) { $handlerPath = $candidate; break; }
+}
+if ($handlerPath === null) {
+    echo "\nContactHandler.php not found next to this file or in ../app/Http/.\n";
+    echo "The detector and Turnstile tests need it — adjust the paths above for your layout.\n";
+    exit(1);
+}
+require_once $handlerPath;
+
+// Stubbed only when the runtime has none, which is always true for a file run
+// directly by the PHP CLI. Acorn's own env() wins if something loaded it.
+if (!function_exists('env')) {
+    function env(string $key)
+    {
+        return $GLOBALS['TEST_ENV'][$key] ?? '';
+    }
+}
+
+function handlerMethod(string $name): ReflectionMethod
+{
+    $method = new ReflectionMethod('App\Http\ContactHandler', $name);
+    if (PHP_VERSION_ID < 80100) {
+        $method->setAccessible(true); // required on 7.4; a no-op since 8.1, deprecated in 8.5
+    }
+    return $method;
+}
+
 function isGibberish(string $text, array $cfg): bool
 {
-    $len = strlen($text);
-    if ($len < (int) ($cfg['gibberishSkipLengthBelow'] ?? 8)) return false;
-    $letters = preg_replace('/[^A-Za-z]/', '', $text);
-    $letterLen = strlen($letters);
-    if ($letterLen < 4) return false;
-    $vowelCount = preg_match_all('/[aeiouAEIOU]/', $letters);
-    $ratio = $vowelCount / $letterLen;
-    if ($ratio < ($cfg['gibberishVowelMinRatio'] ?? 0.15)) return true;
-    $maxRun = (int) ($cfg['gibberishMaxConsonantRun'] ?? 6);
-    if (preg_match('/[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]{' . $maxRun . ',}/', $letters)) return true;
-    return false;
+    return handlerMethod('isGibberish')->invoke(null, $text, $cfg);
 }
 
 // ── Load shared validation config ─────────────────────────────────────────
@@ -144,64 +167,41 @@ t('Slavic / German names do not false-positive', function () use ($spamCfg) {
 // 403. The gate must treat a half-configured pair as off, and say so in the
 // log — that line is the operator's only signal the layer is not running.
 //
-// Reflection rather than a WordPress bootstrap: verifyTurnstile returns
-// before any wp_remote_post call in all four cases below, so nothing here
-// touches the network. env() is stubbed only if the runtime has none, which
-// is always true when this file is run directly as a CLI script.
-$handlerPath = null;
-foreach ([__DIR__ . '/ContactHandler.php', __DIR__ . '/../app/Http/ContactHandler.php'] as $candidate) {
-    if (file_exists($candidate)) { $handlerPath = $candidate; break; }
-}
+// All four cases return before any wp_remote_post call, so nothing here
+// touches the network.
+$logFile = tempnam(sys_get_temp_dir(), 'contact-test-');
+ini_set('error_log', $logFile);
+$verify = handlerMethod('verifyTurnstile');
+
+// Returns [allowed, log output] for one key combination.
+$gate = function (string $secret, string $siteKey, string $token) use ($verify, $logFile) {
+    $GLOBALS['TEST_ENV'] = ['TURNSTILE_SECRET_KEY' => $secret, 'TURNSTILE_SITE_KEY' => $siteKey];
+    file_put_contents($logFile, '');
+    return [$verify->invoke(null, $token, '203.0.113.7'), file_get_contents($logFile)];
+};
 
 echo "\nturnstile configuration gate:\n";
-if ($handlerPath === null) {
-    echo "  ! skipped — ContactHandler.php not found next to this file or in ../app/Http/\n";
-} else {
-    require_once $handlerPath;
-    if (!function_exists('env')) {
-        function env(string $key)
-        {
-            return $GLOBALS['TEST_ENV'][$key] ?? '';
-        }
-    }
+t('neither key — skips silently (dev)', function () use ($gate) {
+    [$allowed, $log] = $gate('', '', '');
+    assertEqual(true, $allowed, 'must skip when Turnstile is not configured');
+    assertTrue(strpos($log, 'half-configured') === false, 'must not warn when neither key is set');
+});
+t('secret without site key — skips and warns', function () use ($gate) {
+    [$allowed, $log] = $gate('secret', '', '');
+    assertEqual(true, $allowed, 'must not reject when no widget can render');
+    assertTrue(strpos($log, 'half-configured') !== false, 'must log the misconfiguration');
+});
+t('site key without secret — skips and warns', function () use ($gate) {
+    [$allowed, $log] = $gate('', 'sitekey', '');
+    assertEqual(true, $allowed, 'must not enforce without a secret to verify against');
+    assertTrue(strpos($log, 'half-configured') !== false, 'must log the misconfiguration');
+});
+t('both keys, empty token — rejects', function () use ($gate) {
+    [$allowed] = $gate('secret', 'sitekey', '');
+    assertEqual(false, $allowed, 'must reject an empty token once fully configured');
+});
 
-    $logFile = tempnam(sys_get_temp_dir(), 'contact-test-');
-    ini_set('error_log', $logFile);
-
-    $verify = new ReflectionMethod('App\Http\ContactHandler', 'verifyTurnstile');
-    if (PHP_VERSION_ID < 80100) {
-        $verify->setAccessible(true); // no-op since 8.1, deprecated in 8.5
-    }
-
-    // Returns [allowed, log output] for one key combination.
-    $gate = function (string $secret, string $siteKey, string $token) use ($verify, $logFile) {
-        $GLOBALS['TEST_ENV'] = ['TURNSTILE_SECRET_KEY' => $secret, 'TURNSTILE_SITE_KEY' => $siteKey];
-        file_put_contents($logFile, '');
-        return [$verify->invoke(null, $token, '203.0.113.7'), file_get_contents($logFile)];
-    };
-
-    t('neither key — skips silently (dev)', function () use ($gate) {
-        [$allowed, $log] = $gate('', '', '');
-        assertEqual(true, $allowed, 'must skip when Turnstile is not configured');
-        assertTrue(strpos($log, 'half-configured') === false, 'must not warn when neither key is set');
-    });
-    t('secret without site key — skips and warns', function () use ($gate) {
-        [$allowed, $log] = $gate('secret', '', '');
-        assertEqual(true, $allowed, 'must not reject when no widget can render');
-        assertTrue(strpos($log, 'half-configured') !== false, 'must log the misconfiguration');
-    });
-    t('site key without secret — skips and warns', function () use ($gate) {
-        [$allowed, $log] = $gate('', 'sitekey', '');
-        assertEqual(true, $allowed, 'must not enforce without a secret to verify against');
-        assertTrue(strpos($log, 'half-configured') !== false, 'must log the misconfiguration');
-    });
-    t('both keys, empty token — rejects', function () use ($gate) {
-        [$allowed] = $gate('secret', 'sitekey', '');
-        assertEqual(false, $allowed, 'must reject an empty token once fully configured');
-    });
-
-    unlink($logFile);
-}
+unlink($logFile);
 
 // ── Summary ───────────────────────────────────────────────────────────────
 echo "\n—\n";

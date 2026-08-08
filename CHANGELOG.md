@@ -5,13 +5,16 @@ All notable changes to this skill are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.2] - 2026-08-08
 
 ### Fixed
 - A payload omitting `_ts` skipped the timing layer entirely, because the check was guarded on `$ts > 0`. The form always renders the field, so an absent one now fails the layer instead of bypassing it, logged as `missing_ts` to keep it separable from `timing_too_fast`. A custom client posting to the endpoint has to send the field.
 
 ### Added
 - `templates/contact-validation.test.php` covers the Turnstile configuration gate — four key combinations through the real `verifyTurnstile`, asserting both the return and the `half-configured` log line. Regression cover for 0.1.1; it fails against the pre-0.1.1 handler.
+
+### Changed
+- The PHP suite drives `ContactHandler::isGibberish` by reflection instead of an inline transcription of it, so the detector's shipped code is what gets tested. Verified by mutation: neutering the real method now fails three assertions that previously stayed green. A missing `ContactHandler.php` is a hard failure rather than a silent skip.
 
 ## [0.1.1] - 2026-08-08
 
